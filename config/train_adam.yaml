@@ -1,0 +1,16 @@
+dataloader:
+  data_name: cifar100
+  batch_size: 128
+model:
+  model_name: resnet18
+optimizer:
+  opt_name: adam
+  lr: 0.001
+  weight_decay: 0.0005
+  betas: [0.9, 0.999]
+trainer:
+  epochs: 200
+  seed: 42
+logging:
+  framework_name: wandb
+  project_name: sam-label-noise-cifar100

@@ -1,0 +1,13 @@
+data/cifar-10-batches-py/*
+data/cifar-100-python/*
+data/cifar-10-python.tar.gz
+data/cifar-100-python.tar.gz
+data/train/*
+data/val/*
+data/tiny-imagenet-200/*
+data/Animal-10N
+checkpoint
+__pycache__
+wandb
+stored
+plot/*
