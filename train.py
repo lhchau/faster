@@ -26,10 +26,11 @@ EPOCHS = cfg['trainer']['epochs']
 
 resume = cfg['trainer'].get('resume', None)
 scheduler = cfg['trainer'].get('scheduler', None)
+gradient_accumulation_steps = cfg['trainer'].get('gradient_accumulation_steps', 1)
 
 print('==> Initialize Logging Framework..')
 logging_name = get_logging_name(cfg)
-logging_name += (f'_sch={scheduler}' + '_' + current_time)
+logging_name += (f'_sch={scheduler}_ga={gradient_accumulation_steps}' + '_' + current_time)
 
 
 framework_name = cfg['logging']['framework_name']
@@ -65,14 +66,7 @@ print(f'==> Number of parameters in {cfg["model"]}: {total_params}')
 criterion = nn.CrossEntropyLoss()
 opt_name = cfg['optimizer'].pop('opt_name', None)
 optimizer = get_optimizer(net, opt_name, cfg['optimizer'])
-if scheduler == 'step':
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(EPOCHS * 0.5), int(EPOCHS * 0.75)])
-elif scheduler == 'constant':
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(EPOCHS * 1.1)])
-elif scheduler == 'ada_belief':
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[150])
-else:
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
 ################################
 #### 3.b Training 
@@ -92,7 +86,8 @@ if __name__ == "__main__":
             logging_dict=logging_dict,
             epoch=epoch,
             loop_type='train',
-            logging_name=logging_name)
+            logging_name=logging_name,
+            gradient_accumulation_steps=gradient_accumulation_steps)
         best_acc, acc = loop_one_epoch(
             dataloader=test_dataloader,
             net=net,
@@ -108,16 +103,3 @@ if __name__ == "__main__":
         
         if framework_name == 'wandb':
             wandb.log(logging_dict)
-            
-    #     mini_hessian_batch_size = 128
-    #     cfg['dataloader']['batch_size'] = mini_hessian_batch_size
-    #     train_dataloader, _, _ = get_dataloader(**cfg['dataloader'])
-    #     figure = get_eigen_hessian_plot(
-    #         name=logging_name, 
-    #         net=net,
-    #         criterion=criterion,
-    #         dataloader=train_dataloader,
-    #         hessian_batch_size=128*20,
-    #         mini_hessian_batch_size=mini_hessian_batch_size
-    #     )
-    #     wandb.log({'train/top5_eigenvalue_density': wandb.Image(figure)})

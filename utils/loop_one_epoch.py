@@ -15,7 +15,8 @@ def loop_one_epoch(
     epoch,
     loop_type='train',
     logging_name=None,
-    best_acc=0
+    best_acc=0,
+    gradient_accumulation_steps=1
     ):
     loss = 0
     total = 0
@@ -27,38 +28,37 @@ def loop_one_epoch(
             inputs, targets = inputs.to(device), targets.to(device)
             
             opt_name = type(optimizer).__name__
-            if opt_name == 'SGD' or opt_name == 'Adam':
+            if opt_name == 'SGD':
                 outputs = net(inputs)
                 first_loss = criterion(outputs, targets)
+                first_loss /= gradient_accumulation_steps
                 first_loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
-            else:
-                enable_running_stats(net)  # <- this is the important line
+                if (batch_idx + 1) % gradient_accumulation_steps == 0 or (batch_idx + 1) == len(dataloader):
+                    optimizer.step()
+                    optimizer.zero_grad()
+            elif opt_name == 'SODA':
                 outputs = net(inputs)
                 first_loss = criterion(outputs, targets)
-                first_loss.backward()        
-                optimizer.first_step(zero_grad=True)
-                
-                disable_running_stats(net)  # <- this is the important line
-                criterion(net(inputs), targets).backward()
-                
-                if (batch_idx + 1) % len(dataloader) == 0:
-                    logging_dict.update(get_checkpoint(optimizer))
-                    logging_dict.update(get_norm(optimizer))
-                
-                optimizer.second_step(zero_grad=True)
-                
-            with torch.no_grad():
-                loss += first_loss.item()
-                loss_mean = loss/(batch_idx+1)
-                _, predicted = outputs.max(1)
-                
-                total += targets.size(0)
-                correct += predicted.eq(targets).sum().item()
-                acc = 100.*correct/total
-                
-                progress_bar(batch_idx, len(dataloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'% (loss_mean, acc, correct, total))
+                first_loss /= gradient_accumulation_steps
+                first_loss.backward()
+                if (batch_idx + 1) % gradient_accumulation_steps != 0 and (batch_idx + 1) != len(dataloader):
+                    optimizer.unperturb()
+                    optimizer.perturb()
+                else:
+                    optimizer.unperturb()
+                    optimizer.step()
+                    optimizer.zero_grad()
+            if (batch_idx + 1) % gradient_accumulation_steps == 0 or (batch_idx + 1) == len(dataloader):
+                with torch.no_grad():
+                    loss += first_loss.item()
+                    loss_mean = loss/(batch_idx+1)
+                    _, predicted = outputs.max(1)
+                    
+                    total += targets.size(0)
+                    correct += predicted.eq(targets).sum().item()
+                    acc = 100.*correct/total
+                    
+                    progress_bar(batch_idx, len(dataloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'% (loss_mean, acc, correct, total))
     else:
         net.eval()
         with torch.no_grad():

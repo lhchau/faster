@@ -13,12 +13,6 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 
-# Sử dụng LambdaLR để tạo linear warmup
-def lr_lambda(current_step: int, warmup_steps: int, base_lr: float):
-    if current_step < warmup_steps:
-        return base_lr * float(current_step) / float(max(1, warmup_steps))  # Linear warmup
-    return base_lr  # Constant learning rate
-
 def get_alpha(epoch, initial_alpha, final_alpha, total_epochs):
     if epoch < total_epochs:
         alpha = initial_alpha - (initial_alpha - final_alpha) * (epoch / total_epochs)
