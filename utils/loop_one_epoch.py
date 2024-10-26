@@ -41,11 +41,11 @@ def loop_one_epoch(
                 first_loss = criterion(outputs, targets)
                 first_loss /= gradient_accumulation_steps
                 first_loss.backward()
-                if (batch_idx + 1) % gradient_accumulation_steps != 0 and (batch_idx + 1) != len(dataloader):
+                if (batch_idx + 1) % (gradient_accumulation_steps - 1) == 0 and (batch_idx + 1) != len(dataloader):
                     optimizer.unperturb()
                     optimizer.perturb()
-                else:
-                    optimizer.unperturb()
+                elif (batch_idx + 1) % gradient_accumulation_steps == 0 or (batch_idx + 1) == len(dataloader):
+                    optimizer.unperturb(flush=True)
                     optimizer.step()
                     optimizer.zero_grad()
             if (batch_idx + 1) % gradient_accumulation_steps == 0 or (batch_idx + 1) == len(dataloader):

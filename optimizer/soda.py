@@ -23,7 +23,7 @@ class SODA(torch.optim.Optimizer):
                 param_state['e_w'] = e_w.clone()
         
     @torch.no_grad()
-    def unperturb(self):   
+    def unperturb(self, flush=False):   
         for group in self.param_groups:
             for p in group['params']:
                 if p.grad is None: continue
@@ -31,6 +31,10 @@ class SODA(torch.optim.Optimizer):
                 if 'e_w' not in param_state:
                     param_state['e_w'] = torch.zeros_like(p, memory_format=torch.preserve_format)
                 p.sub_(param_state['e_w'])  # get back to "w" from "w + e(w)"
+                
+                if flush:
+                    param_state['e_w'].zero_()  # Clear the perturbation if flush is True
+                    del param_state['e_w']
 
     @torch.no_grad()
     def step(self, zero_grad=False):
