@@ -41,13 +41,24 @@ def loop_one_epoch(
                 first_loss = criterion(outputs, targets)
                 first_loss /= gradient_accumulation_steps
                 first_loss.backward()
-                if (batch_idx + 1) % (gradient_accumulation_steps - 1) == 0 and (batch_idx + 1) != len(dataloader):
+                if (batch_idx + 1) % gradient_accumulation_steps != 0 and (batch_idx + 1) != len(dataloader):
                     optimizer.unperturb()
                     optimizer.perturb()
                 elif (batch_idx + 1) % gradient_accumulation_steps == 0 or (batch_idx + 1) == len(dataloader):
                     optimizer.unperturb(flush=True)
                     optimizer.step()
                     optimizer.zero_grad()
+            else:
+                enable_running_stats(net)  # <- this is the important line
+                outputs = net(inputs)
+                first_loss = criterion(outputs, targets)
+                first_loss.backward()        
+                optimizer.first_step(zero_grad=True)
+                
+                disable_running_stats(net)  # <- this is the important line
+                criterion(net(inputs), targets).backward()
+                optimizer.second_step(zero_grad=True)
+                
             if (batch_idx + 1) % gradient_accumulation_steps == 0 or (batch_idx + 1) == len(dataloader):
                 with torch.no_grad():
                     loss += first_loss.item()
