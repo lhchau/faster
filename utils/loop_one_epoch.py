@@ -45,7 +45,6 @@ def loop_one_epoch(
                 optimizer.second_step(zero_grad=True)
                 
                 if (batch_idx + 1) % len(dataloader) == 0:
-                    logging_dict.update(get_checkpoint(optimizer))
                     logging_dict.update(get_norm(optimizer))
                 
             with torch.no_grad():
