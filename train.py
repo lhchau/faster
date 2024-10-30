@@ -26,12 +26,10 @@ EPOCHS = cfg['trainer']['epochs']
 
 resume = cfg['trainer'].get('resume', None)
 scheduler = cfg['trainer'].get('scheduler', None)
-gradient_accumulation_steps = cfg['trainer'].get('gradient_accumulation_steps', 1)
 
 print('==> Initialize Logging Framework..')
 logging_name = get_logging_name(cfg)
-logging_name += (f'_sch={scheduler}_ga={gradient_accumulation_steps}' + '_' + current_time)
-
+logging_name += (f'_sch={scheduler}' + '_' + current_time)
 
 framework_name = cfg['logging']['framework_name']
 if framework_name == 'wandb':
@@ -66,8 +64,10 @@ print(f'==> Number of parameters in {cfg["model"]}: {total_params}')
 criterion = nn.CrossEntropyLoss()
 opt_name = cfg['optimizer'].pop('opt_name', None)
 optimizer = get_optimizer(net, opt_name, cfg['optimizer'])
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
-
+if scheduler == 'cosine':
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+else:
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[int(EPOCHS * 0.5), int(EPOCHS * 0.75)])
 ################################
 #### 3.b Training 
 ################################
@@ -86,8 +86,7 @@ if __name__ == "__main__":
             logging_dict=logging_dict,
             epoch=epoch,
             loop_type='train',
-            logging_name=logging_name,
-            gradient_accumulation_steps=gradient_accumulation_steps)
+            logging_name=logging_name)
         best_acc, acc = loop_one_epoch(
             dataloader=test_dataloader,
             net=net,

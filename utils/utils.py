@@ -41,8 +41,8 @@ def get_norm(optimizer):
         logging_dict['first_grad_norm'] = optimizer.first_grad_norm
     if hasattr(optimizer, 'second_grad_norm'):
         logging_dict['second_grad_norm'] = optimizer.second_grad_norm
-    if hasattr(optimizer, 'd_t_grad_norm'):
-        logging_dict['d_t_grad_norm'] = optimizer.d_t_grad_norm
+    if hasattr(optimizer, 'diff_grad_norm'):
+        logging_dict['diff_grad_norm'] = optimizer.diff_grad_norm
     return logging_dict
     
 def get_checkpoint(optimizer, stored_info=[]):

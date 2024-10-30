@@ -26,6 +26,8 @@ class SAM(torch.optim.Optimizer):
 
     @torch.no_grad()
     def second_step(self, zero_grad=False):
+        self.second_grad_norm = self._grad_norm()
+
         for group in self.param_groups:
             weight_decay = group["weight_decay"]
             step_size = group['lr']
@@ -33,6 +35,8 @@ class SAM(torch.optim.Optimizer):
             for p in group['params']:
                 if p.grad is None: continue
                 param_state = self.state[p]
+                param_state['diff'] = p.grad - param_state['first_grad']
+                
                 p.sub_(param_state['e_w'])  # get back to "w" from "w + e(w)"
                 
                 d_p = p.grad.data
@@ -44,6 +48,7 @@ class SAM(torch.optim.Optimizer):
                 param_state['exp_avg'].mul_(momentum).add_(d_p)
                 
                 p.add_(param_state['exp_avg'], alpha=-step_size)
+        self.diff_grad_norm = self._grad_norm(by='diff')
         if zero_grad: self.zero_grad()
 
     @torch.no_grad()
