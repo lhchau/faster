@@ -35,6 +35,22 @@ def get_gradients(optimizer):
             grads.append(p.grad.clone())
     return grads
 
+def get_num_diff(optimizer):
+    num_para_a, num_para_b, total_para = 0, 0, 0
+    for group in optimizer.param_groups:
+        for p in group["params"]:
+            if p.grad is None: continue
+            param_state = optimizer.state[p]
+            total_para += p.numel()
+            num_para_a += torch.sum( param_state['mask'] )
+    
+    num_para_b = total_para - num_para_a
+    return  {
+        'num_para_a': (num_para_a / total_para) * 100, 
+        'num_para_b': (num_para_b / total_para) * 100,
+    }
+
+
 def get_norm(optimizer):
     logging_dict = {}
     if hasattr(optimizer, 'first_grad_norm'):

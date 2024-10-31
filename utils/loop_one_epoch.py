@@ -42,10 +42,12 @@ def loop_one_epoch(
                 
                 disable_running_stats(net)  # <- this is the important line
                 criterion(net(inputs), targets).backward()
-                optimizer.second_step(zero_grad=True)
                 
                 if (batch_idx + 1) % len(dataloader) == 0:
                     logging_dict.update(get_norm(optimizer))
+                    logging_dict.update(get_num_diff(optimizer))
+                    
+                optimizer.second_step(zero_grad=True)
                 
             with torch.no_grad():
                 loss += first_loss.item()
@@ -88,6 +90,19 @@ def loop_one_epoch(
                 torch.save(state, os.path.join(save_path, 'ckpt_best.pth'))
                 best_acc = acc
             logging_dict[f'{loop_type.title()}/best_acc'] = best_acc
+            
+            # if epoch == 99 or epoch == 100 or epoch == 149 or epoch == 150:
+            #     print(f'Saving checkpoint {epoch} ...')
+            #     state = {
+            #         'net': net.state_dict(),
+            #         'acc': acc,
+            #         'loss': loss,
+            #         'epoch': epoch
+            #     }
+            #     save_path = os.path.join('checkpoint', logging_name)
+            #     if not os.path.isdir(save_path):
+            #         os.makedirs(save_path)
+            #     torch.save(state, os.path.join(save_path, f'ckpt_{epoch}.pth'))
         logging_dict[f'{loop_type.title()}/gen_gap'] = logging_dict['Train/acc'] - acc
                 
     logging_dict[f'{loop_type.title()}/loss'] = loss_mean
