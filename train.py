@@ -48,9 +48,7 @@ net = get_model(**cfg['model'], num_classes=num_classes)
 net = net.to(device)
 if resume:
     print('==> Resuming from best checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    load_path = os.path.join('checkpoint', resume, 'ckpt_best.pth')
-    checkpoint = torch.load(load_path)
+    checkpoint = torch.load(resume)
     net.load_state_dict(checkpoint['net'])
     start_epoch = checkpoint['epoch']
     best_acc = checkpoint['acc']
@@ -73,9 +71,9 @@ else:
 ################################
 if __name__ == "__main__":
     if resume:
-        for epoch in range(0, start_epoch):
+        for epoch in range(0, start_epoch + 1):
             scheduler.step()
-    for epoch in range(start_epoch, EPOCHS):
+    for epoch in range(start_epoch + 1, EPOCHS):
         print('\nEpoch: %d' % epoch)
         loop_one_epoch(
             dataloader=train_dataloader,
