@@ -1,12 +1,14 @@
 import torch
 
 
-class SAM(torch.optim.Optimizer):
-    def __init__(self, params, rho=0.05, adaptive=False, **kwargs):
+class SANER(torch.optim.Optimizer):
+    def __init__(self, params, rho=0.05, adaptive=False, group="B", condition=1, **kwargs):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
 
         defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
-        super(SAM, self).__init__(params, defaults)
+        super(SANER, self).__init__(params, defaults)
+        self.group = group
+        self.condition = condition
         
     @torch.no_grad()
     def first_step(self, zero_grad=False):   
@@ -23,12 +25,12 @@ class SAM(torch.optim.Optimizer):
                 param_state['first_grad'] = p.grad.clone()
                 param_state['e_w'] = e_w.clone()
                 param_state['old_p'] = p.data.clone()
+
         if zero_grad: self.zero_grad()
 
     @torch.no_grad()
     def second_step(self, zero_grad=False):
-        self.second_grad_norm = self._grad_norm()
-
+        self.num_group = 0
         for group in self.param_groups:
             weight_decay = group["weight_decay"]
             step_size = group['lr']
@@ -36,11 +38,17 @@ class SAM(torch.optim.Optimizer):
             for p in group['params']:
                 if p.grad is None: continue
                 param_state = self.state[p]
-                param_state['diff'] = p.grad - param_state['first_grad']
-                
                 p.sub_(param_state['e_w'])  # get back to "w" from "w + e(w)"
                 
-                d_p = p.grad.data
+                ratio = p.grad.div(param_state['first_grad'].add(1e-8))
+                if self.group == "A":
+                    mask = ratio >= 1
+                elif self.group == "B":
+                    mask = torch.logical_and(ratio > 0, ratio < 1)
+                elif self.group == "C":
+                    mask = ratio <= 0
+                self.num_group += torch.sum(mask).item()
+                d_p = p.grad.mul(mask).mul(self.condition) + p.grad.mul(torch.logical_not(mask))
                 if weight_decay != 0:
                     d_p.add_(p.data, alpha=weight_decay)
                     
@@ -49,7 +57,6 @@ class SAM(torch.optim.Optimizer):
                 param_state['exp_avg'].mul_(momentum).add_(d_p)
                 
                 p.add_(param_state['exp_avg'], alpha=-step_size)
-        self.diff_grad_norm = self._grad_norm(by='diff')
         if zero_grad: self.zero_grad()
 
     @torch.no_grad()
@@ -97,6 +104,9 @@ class SAM(torch.optim.Optimizer):
                     p=2
                )
         return norm
+    
+    def set_alpha(self, alpha):
+        self.condition = alpha
     
     def load_state_dict(self, state_dict):
         super().load_state_dict(state_dict)

@@ -1,5 +1,6 @@
 from torch.optim import SGD, Adam
 from .sam import SAM
+from .saner import SANER
 
 def get_optimizer(
     net,
@@ -9,6 +10,8 @@ def get_optimizer(
         return SAM(net.parameters(), **opt_hyperpara)
     elif opt_name == 'sgd':
         return SGD(net.parameters(), **opt_hyperpara)
+    elif opt_name == 'saner':
+        return SANER(net.parameters(), **opt_hyperpara)
     elif opt_name == 'adam':
         return Adam(net.parameters(), **opt_hyperpara)
     else:
